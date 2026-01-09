@@ -198,115 +198,71 @@ def create_MFCC_plot(MFCCs, targets):
     return torch.from_numpy(data.transpose(1,0,2)).float() / 255
 
 
-def get_data(split='train', hop=None):
-    data_dir = Path(FLAGS.data_dir) 
-
+def get_data(subject_ID=None, data_dir=None, num_audio_classes=None, rem_outlier=False, resample=False, DenseModel=False, use_MFCCs=False, run_train=True, hop=None):
     
-    if FLAGS.patient_eight:
-        audio=np.load(str(data_dir / "kh8_1_sentences_audio.npy"))
-    elif FLAGS.patient_thirteen:
+    #1. define paths to the data
+    # data_dir = Path(FLAGS.data_dir)
+    audio_filepath = data_dir + f"/p{subject_ID}_sEEG_processed.npy" #
+    eeg_filepath = data_dir + f"/p{subject_ID}_audio_final.npy" #high gamma data
 
+    #2. load data
+    audio=np.load(audio_filepath)
+    eeg=np.load(eeg_filepath)
+    eeg = np.nan_to_num(eeg) #remove nan
 
-        audio=np.load('/local/home/stuff/data_kh13/kh13_audio_resampled_31_clean.npy')
+    #Optional: remove outlier for audio data
+    if rem_outlier:
         audio[np.where(audio>1)]=0.9999 #some outliers
         audio[np.where(audio<-1)]=-0.9999
-    else:    
-        audio=np.load(str(data_dir / "kh4_1_audio.npy"))
 
-   #prepend data of kh4 to boost prediction of kh8
-    if FLAGS.double_trouble:
-        audio2=np.load(str(data_dir / "kh4_1_audio.npy"))
-        audio=np.concatenate((audio2,audio))
-
-
-    audioSamplingRate = 48000
-    targetSR = 22050
-    if not FLAGS.patient_thirteen:
+    #Optional: resample audio data
+    if resample:
+        audioSamplingRate = 48000
+        targetSR = 22050
         audio=resample(audio, audioSamplingRate, targetSR)
 
-    if FLAGS.patient_eight:
-        if (FLAGS.convolve_eeg_1d or FLAGS.convolve_eeg_2d):
-            sEEG_beta=np.load(str(data_dir / "data8/kh8_1_sentences_sEEG_beta_1024hz.npy"))   
-            sEEG_gamma=np.load(str(data_dir / "data8/kh8_1_sentences_sEEG_gamma_1024hz.npy"))
-            FLAGS.sampling_rate_eeg=1024 #200 is default
-        else:
-            sEEG_beta=np.load(str(data_dir / "data8/kh8_1_sentences_sEEG_beta_200hz.npy"))
-            sEEG_gamma=np.load(str(data_dir / "data8/kh8_1_sentences_sEEG_gamma_200hz.npy")) # channels x seq_len
-        eeg = np.concatenate((sEEG_beta, sEEG_gamma), axis=0).T #seq_len x channels (512474, 214)
-        eeg = np.nan_to_num(eeg)
-        if FLAGS.DenseModel:
-            eeg =sEEG_gamma.T
+    #Optional: transform eeg data shape if the model is Dense Model
+    # if FLAGS.DenseModel:
+    if DenseModel:
+        eeg =eeg.T
 
-    elif FLAGS.patient_thirteen:
-        sEEG_beta=np.load('/local/home/stuff/data_kh13/kh13_sEEG_beta31_clean.npy')
-        sEEG_gamma=np.load('/local/home/stuff/data_kh13/kh13_sEEG_gamma31_clean.npy')  
-        #eeg = np.concatenate((sEEG_beta, sEEG_gamma), axis=0).T #seq_len x channels
-        eeg=sEEG_gamma.T
-
-        FLAGS.sampling_rate_eeg=1024 #200 is default
-    else:
-        #sEEG_beta=np.load(str(data_dir / "sEEG_beta_200hz.npy"))
-        #sEEG_gamma=np.load(str(data_dir / "sEEG_gamma_200hz.npy")) #.T only for 1khz
-
-        sEEG_beta=np.load(str(data_dir / "sEEG_beta_1khz.npy")).T
-        sEEG_gamma=np.load(str(data_dir / "sEEG_gamma_1khz.npy")).T #.T only for 1khz
-        eeg = np.concatenate((sEEG_beta, sEEG_gamma), axis=1)
-        FLAGS.sampling_rate_eeg=1024
-
-
-    if FLAGS.double_trouble:
-        sEEG_beta2=np.load(str(data_dir / "sEEG_beta_1khz.npy"))
-        sEEG_gamma2=np.load(str(data_dir / "sEEG_gamma_1khz.npy"))
-        eeg2 = np.concatenate((sEEG_beta2,sEEG_gamma2), axis=0).T #seq_len x channels
-        eeg2=eeg2[:,:214] #(307519, 214)
-        eeg=np.concatenate((eeg2,eeg), axis=0) #(819993, 214)
-        zeros=np.zeros((len(eeg2),1))
-        ones=np.ones((len(eeg)-len(eeg2),1))
-        zero_one=np.concatenate((zeros,ones), axis=0)
-        eeg=np.concatenate((eeg,zero_one), axis=1)  #add one channel that indicates patient 4 (0) or patient 8 (1)
-
-
+    #3. set variables
     audio_eeg_sample_ratio = len(audio) / len(eeg) #make this an int??
-    
-    if not FLAGS.use_MFCCs:
+    sampling_rate_eeg=1024 # original: FLAGS.sampling_rate_eeg=1024 #200 is default
+
+    #Optional: convert audio into classes
+    # if not FLAGS.use_MFCCs:
+    if use_MFCCs:
         audio = audio_signal_to_classes(audio)
     
-    num_train_samples = round(len(eeg) * FLAGS.train_test_split)
-    num_train_samples_audio = round(len(audio) * FLAGS.train_test_split)
-    
-    num_test_samples = len(eeg)-num_train_samples
-    num_test_samples_audio = len(audio)-num_train_samples_audio
+    #4. calculate the number of samples
+    num_train_eeg = round(len(eeg) * FLAGS.train_test_split)
+    num_train_audio = round(len(audio) * FLAGS.train_test_split)
 
-    test_set_beginning=False
-    if test_set_beginning:
-        if split == 'train':
-            eeg = eeg[num_test_samples:]
-            audio = audio[num_test_samples_audio:]
-        elif split == 'test':
-            eeg = eeg[:num_test_samples]
-            audio = audio[:num_test_samples_audio]
+    #5. split data into train and test
+    if run_train: #train and test data is the always the same
+        eeg = eeg[:num_train_eeg]
+        audio = audio[:num_train_audio]
     else:
-        if split == 'train':
-            eeg = eeg[:num_train_samples]
-            audio = audio[:num_train_samples_audio]
+        eeg = eeg[num_train_eeg:]
+        audio = audio[num_train_audio:]
+    
+    #Optional: shuffle the data (but not sure if this is correct way)
+    # if FLAGS.double_trouble and split == 'train':
+    #     np.random.shuffle(audio)
+    #     np.random.shuffle(eeg)
 
-        elif split == 'test':
-            eeg = eeg[num_train_samples:]
-            audio = audio[num_train_samples_audio:]
-
-    if FLAGS.double_trouble and split == 'train':
-        np.random.shuffle(audio)
-        np.random.shuffle(eeg)
-
-
+    #6. convert data type
     eeg = torch.from_numpy(eeg).float()
-
-    if FLAGS.use_MFCCs:
+    # if FLAGS.use_MFCCs:
+    if use_MFCCs:
         audio = torch.from_numpy(audio).float()
     else:
         audio = torch.from_numpy(audio).long()
 
-    return EEGAudioDataset(eeg, audio, FLAGS.num_audio_classes,audio_eeg_sample_ratio, hop=hop)
+    # return EEGAudioDataset(eeg, audio, FLAGS.num_audio_classes,audio_eeg_sample_ratio, hop=hop)
+    return EEGAudioDataset(eeg, audio, num_audio_classes, audio_eeg_sample_ratio, hop=hop)
+
 
 
 class EEGAudioDataset(torch.utils.data.Dataset):
