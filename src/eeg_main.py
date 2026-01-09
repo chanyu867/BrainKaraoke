@@ -79,7 +79,7 @@ def main(_):
     run_train = True
     subject_ID = 1
     num_audio_classes = 256
-    data_dir = "/kaggle/input/speech-dataset"
+    data_dir = "/kaggle/working/BrainKaraoke/src"
     hop_in_ms = 15 #FLAGS.hop_in_ms
     if run_train:
         train_ds = dataset.get_data(subject_ID=subject_ID, data_dir=data_dir, num_audio_classes=num_audio_classes, rem_outlier=False, resample=False, DenseModel=False, use_MFCCs=False, run_train=run_train, hop=hop_in_ms)
