@@ -17,6 +17,8 @@ from mne.filter import filter_data
 
 from scipy.signal import hilbert, decimate
 from scipy.fftpack import next_fast_len
+
+# load defined functions by authors
 from audio_processing import dynamic_range_compression
 from audio_processing import dynamic_range_decompression
 

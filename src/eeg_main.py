@@ -9,15 +9,17 @@ import os
 import torch 
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from torchcontrib.optim import SWA
 import numpy as np
 import sklearn
 import IPython
 
+
+# load defined functions by authors
 import dataset
 import models
-
-from torchcontrib.optim import SWA
 from two_sample_distance import pdist
+
 
 
 flags.DEFINE_integer('batch_size', 32, '')
@@ -48,10 +50,7 @@ flags.DEFINE_bool('discretize_MFCCs', False, '')
 
 
 flags.DEFINE_bool('mixed_loss', False, '')
-
-
 flags.DEFINE_multi_integer('lr_milestones',[90,110],'epochs where lr is decreased.')
-
 
 FLAGS = flags.FLAGS
 

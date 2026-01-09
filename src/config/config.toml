@@ -1,0 +1,42 @@
+# config.toml
+
+[run]
+cuda_visible_devices = "6"
+
+[train]
+final_eval = true
+epochs = 110
+batch_size = 521
+learning_rate = 0.001
+window_size = 333
+teacher_forcing_ratio = 0.1
+debug = false
+
+[model]
+hidden_size = 333
+dropout = 0.1
+use_bahdanau_attention = true
+
+pre_and_postnet = true
+pre_and_postnet_dim = 256
+
+convolve_eeg_1d = false
+convolve_eeg_2d = true
+convolve_eeg_3d = false
+
+OLS = false
+DenseModel = false
+
+use_MFCCs = true
+discretize_MFCCs = false
+
+mixed_loss = false
+double_trouble = false
+
+[subject]
+patient_eight = false
+patient_thirteen = true
+
+[swa]
+SWA = false
+swa_start = 140

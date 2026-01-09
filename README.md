@@ -1,4 +1,4 @@
-# stereoEEG2speech
+# Let brain to talk!
 We provide code for a seq2seq architecture with Bahdanau attention designed to map stereotactic EEG data from human brains to spectrograms, using the PyTorch Lightning frameworks. The regressed spectograms can then be used to synthesize actual speech (for example) via the flow based generative Waveglow architecture.
 
 
