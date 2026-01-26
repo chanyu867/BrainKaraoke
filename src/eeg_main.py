@@ -10,7 +10,7 @@ Original file is located at
 from google.colab import drive
 import sys
 import os
-
+import numpy as np
 drive.mount('/content/drive')
 
 PROJECT_PATH = '/content/drive/MyDrive/Advance_python_project'
