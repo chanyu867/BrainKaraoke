@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import matplotlib
 matplotlib.use('Agg')
-
+import numpy as np
 from absl import logging,flags
 import torch 
 import numpy as np
