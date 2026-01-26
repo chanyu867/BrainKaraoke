@@ -47,6 +47,8 @@ flags.DEFINE_bool('DenseModel', False, '')
 
 flags.DEFINE_bool('discretize_MFCCs', False, '')
 
+
+
 flags.DEFINE_bool('mixed_loss', False, '')
 flags.DEFINE_multi_integer('lr_milestones',[90,110],'epochs where lr is decreased.')
 
@@ -74,18 +76,7 @@ def main(_):
         print("Running with OLS/Dense. Re-setting window_size to 50ms")
 
 
-    #1. load train data
-    # train_ds = dataset.get_data(split='train', hop=FLAGS.hop_in_ms)
-    run_train = True
-    subject_ID = 1
-    num_audio_classes = 256
-    data_dir = "/kaggle/working/BrainKaraoke/src"
-    hop_in_ms = 15 #FLAGS.hop_in_ms
-    if run_train:
-        train_ds = dataset.get_data(subject_ID=subject_ID, data_dir=data_dir, num_audio_classes=num_audio_classes, rem_outlier=False, resample=False, DenseModel=False, use_MFCCs=False, run_train=run_train, hop=hop_in_ms)
-    else:
-        test_ds = dataset.get_data(subject_ID=subject_ID, data_dir=data_dir, num_audio_classes=num_audio_classes, rem_outlier=False, resample=False, DenseModel=False, use_MFCCs=False, run_train=run_train, hop=hop_in_ms)
-
+    train_ds = dataset.get_data(split='train', hop=FLAGS.hop_in_ms)
 
     test_ds = dataset.get_data(split='test')
     logging.info(f'train size: {len(train_ds)}, test size: {len(test_ds)}')
