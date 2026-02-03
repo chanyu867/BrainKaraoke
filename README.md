@@ -8,7 +8,7 @@ The codebase is structured as:
 - a model definition (encoder/decoder + attention)
 - a training pipeline (PyTorch Lightning module, loss/metrics, checkpoints)
 
----
+
 
 ## Concept Overview
 
@@ -34,7 +34,7 @@ The training pipeline handles:
 - saving checkpoints (best model by validation loss)
 - optional saving of predictions for later evaluation/vocoding
 
----
+
 
 ## Supported Modes
 
@@ -48,7 +48,7 @@ Mel-spectrogram (Regression mode)
 
 > Even if some code labels this as “MFCC”, the actual transform is usually **mel spectrogram** (common in Tacotron/WaveGlow workflows).
 
----
+
 
 ## Outputs
 Depending on your config, the pipeline can produce:
@@ -57,7 +57,7 @@ Depending on your config, the pipeline can produce:
 - **Saved predictions** (e.g., numpy arrays of target vs predicted audio/mel)
 - In mel mode, it may optionally save example mel tensors for external vocoders
 
----
+
 
 ## How to Run
 
