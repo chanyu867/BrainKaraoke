@@ -14,6 +14,12 @@ import dataset
 from pipeline import Model
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
+
+
 flags.DEFINE_string(
     'config',
     None,
@@ -43,11 +49,9 @@ def _apply_toml_config(config_path: str, FLAGS_obj):
 
         flag = FLAGS_obj[key]
 
-        # if FLAG already has been registerd on CLI command, skip
         if flag.present:
             continue
 
-        # task: check meaning
         if not flag.using_default_value:
             continue
 
@@ -64,24 +68,12 @@ def main(_):
         _apply_toml_config(FLAGS.config, FLAGS)
         logging.info("Loaded config from %s", FLAGS.config)
     
-    if FLAGS.clean_logs_dir:
-        sh.rm('-r', '-f', 'logs')
-        sh.mkdir('logs')
     if not torch.cuda.is_available():
         FLAGS.gpus = 0
         torch.Tensor.cuda = lambda self, *args, **kwargs: self
 
     if FLAGS.gpus:
         time.sleep(5)
-
-    if not FLAGS.patient_eight:
-        FLAGS.num_mel_centroids=10
-
-
-    if FLAGS.OLS or FLAGS.DenseModel: #make sure output length is 1.
-        assert FLAGS.use_MFCCs==True, "OLS can so far only be used with MFCCs"
-        FLAGS.window_size=50
-        print("Running with OLS/Dense. Re-setting window_size to 50ms")
 
     train_ds = dataset.get_data(split='train', hop=FLAGS.hop_in_ms)
     val_ds   = dataset.get_data(split='val',   hop=FLAGS.hop_in_ms)
@@ -100,7 +92,6 @@ def main(_):
 
     model = Model(train_ds=train_ds, val_ds=val_ds, test_ds=test_ds, num_classes=num_classes, sampling_rate_audio=sampling_rate_audio)
 
-    # use gpus if they are available
     if FLAGS.gpus and torch.cuda.is_available():
         accelerator = "gpu"
         devices = FLAGS.gpus
@@ -108,10 +99,9 @@ def main(_):
         accelerator = "cpu"
         devices = 1
 
-
-    os.makedirs("/content/drive/MyDrive/Advance_python_project/checkpoints_p2_1d", exist_ok=True)
+    os.makedirs(FLAGS.checkpoints_dir, exist_ok=True)
     checkpoint_callback = ModelCheckpoint(
-        dirpath= "/content/drive/MyDrive/Advance_python_project/checkpoints_p2_1d",
+        dirpath=FLAGS.checkpoints_dir,
         monitor="val_loss",
         filename="model-{epoch:02d}-{val_loss:.4f}",
         save_top_k =1,
@@ -123,36 +113,22 @@ def main(_):
     if (run_name is None) or (run_name is Ellipsis):
         run_name = "default_run"
 
-    callbacks = []
-    if FLAGS.SWA:
-        callbacks.append(
-            pl.callbacks.StochasticWeightAveraging(
-                swa_lrs=FLAGS.learning_rate / 10,
-                swa_epoch_start=max(0, FLAGS.epochs - 2),
-                )
-            )
-    callbacks.append(checkpoint_callback)
     trainer = pl.Trainer(
         accelerator=accelerator,
         devices=devices,
         max_epochs=FLAGS.epochs,
-        fast_dev_run=FLAGS.debug,
         default_root_dir="logs",
         logger=pl.loggers.TensorBoardLogger("logs", name=str(run_name)),
         detect_anomaly=True,          # replacement for terminate_on_nan
         log_every_n_steps=10,        # replacement for row_log_interval
         num_sanity_val_steps=8,       # replacement for nb_sanity_val_steps
         gradient_clip_val=2,
-        callbacks=callbacks,
+        callbacks=[checkpoint_callback],
         enable_progress_bar=False,
     )
 
-    print("Starting training")
+    logger.info("Starting training")
     trainer.fit(model)
-
-    if FLAGS.final_eval:
-        trainer.test(model)
-
 
 if __name__ == '__main__':
     app.run(main)
