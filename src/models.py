@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import matplotlib
 matplotlib.use('Agg')
-import numpy as np
+
 from absl import logging,flags
 import torch 
 import numpy as np
@@ -10,30 +10,23 @@ import IPython
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 
-flags.DEFINE_integer('hidden_size', 128, '')
-flags.DEFINE_integer('n_layers', 3, '')
-flags.DEFINE_integer('n_layers_decoder', 1, '')
-flags.DEFINE_float('dropout', 0.5, '')
-flags.DEFINE_integer('n_pos', 32, '')
-flags.DEFINE_bool('use_bahdanau_attention', True, '')
-flags.DEFINE_bool('convolve_eeg_1d', False, '')
-
-flags.DEFINE_bool('convolve_eeg_2d', False, '')
-
-flags.DEFINE_bool('convolve_eeg_3d', False, '')
-flags.DEFINE_bool('pre_and_postnet', True, '')
-flags.DEFINE_integer('pre_and_postnet_dim', 256, '')
-
 FLAGS = flags.FLAGS
 
 def create_attention_plot(attention_matrix):
     fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)
-    ax.imshow(attention_matrix.detach().cpu().numpy(), cmap='viridis',aspect='auto') 
+    ax.imshow(attention_matrix.detach().cpu().numpy(), cmap="viridis", aspect="auto")
+
     fig.canvas.draw()
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    #return torch.from_numpy(data.transpose(1,0,2)).float() / 255
-    return torch.from_numpy(data).float() / 255
+
+    # (H, W, 4) RGBA uint8
+    buf = np.asarray(fig.canvas.buffer_rgba())
+
+    # (H, W, 3) RGB uint8
+    data = buf[..., :3].copy()
+
+    # same shape as your old code would produce: (H, W, 3)
+    return data
+
 class PositionalEncoding(torch.nn.Module):
 
     def __init__(self, max_length, dim):
@@ -302,6 +295,9 @@ class RNNSeq2Seq(torch.nn.Module):
         elif FLAGS.convolve_eeg_3d:
             self.convnet=Convnet3d(self.input_channels)
             self.input_dim=270
+            
+        print(f"Convnet class instantiated: {self.convnet.__class__.__name__}")
+        
 
         self.encoder = torch.nn.GRU( 
                 self.input_dim + FLAGS.n_pos, # input_size, positional embeddings are added to the channels. CONV CHANNELS + pos IF convolve_first.

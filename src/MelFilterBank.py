@@ -21,8 +21,10 @@ class MelFilterBank():
         # Construct matrix with triangular filters
         for i in range(numBands):
             start, center, end = centerIndices[i:i + 3]
-            k1 = np.float(center - start)
-            k2 = np.float(end - center)
+            # k1 = np.float(center - start)
+            # k2 = np.float(end - center)
+            k1 = float(center - start)
+            k2 = float(end - center)
             up = (np.array(range(start, center)) - start) / k1
             down = (end - np.array(range(center, end))) / k2
 
