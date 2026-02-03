@@ -1,53 +1,66 @@
-# Let brain talk!
-We provide code for a seq2seq architecture with Bahdanau attention designed to map stereotactic EEG data from human brains to spectrograms, using the PyTorch Lightning frameworks. The regressed spectograms can then be used to synthesize actual speech (for example) via the flow based generative Waveglow architecture.
+# Let brain talk! (sEEG → Audio)
 
+This project trains a **sequence-to-sequence (Seq2Seq) neural model** that learns a mapping from **EEG/sEEG time-series windows** to an **audio representation**. The goal is to predict audio content aligned to brain activity, using an encoder–decoder model with attention.
 
-## Data
-Stereotactic electroencephalogaphy (sEEG) utilizes localized, penetrating depth electrodes to measure electrophysiological brain activity. The implanted electrodes generally provide a sparse sampling of a unique set of brain regions including deeper brain structures such as hippocampus, amygdala and insula that cannot be captured by superficial measurement modalities such as electrocorticography (ECoG). As a result, sEEG data provides a promising bases for future research on Brain Computer Interfaces (BCIs) [1].
+The codebase is structured as:
+- an entry script that launches training (`main.py`)
+- a dataset/preprocessing layer (EEG + audio loading, alignment, transforms)
+- a model definition (encoder/decoder + attention)
+- a training pipeline (PyTorch Lightning module, loss/metrics, checkpoints)
 
-In this project we use sEEG data from patients with 8 sEEG electrode shafts of which each shaft contains 8-18 contacts. Patients read out sequences of either words or sentences over a duration of 10-30 minutes. Audio is recorded at 44khz and EEG data is recoded at 1khz. As an intermediate representation, we embed the audio data in mel-scale spectrograms of 80 bins.
+---
 
+## Concept Overview
 
-## Network architecture
+### Inputs
+- **ECoG/EEG (or sEEG) signal**: a 1D or multi-channel brain signal sampled over time.
+- **Audio signal**: raw waveform aligned (in time) to the EEG.
 
-Existing models in speech synthesis from neural activity in the human brain rely mainly on fully connected and convolutional models (e.g. [2]). Yet, due to the clear temporal structure of this task we here propose the use of RNN based architectures.
+The dataset layer handles:
+- reading data from files (typically `.npy` arrays)
+- splitting into train/val/test
+- preparing synchronized EEG/audio segments suitable for a Seq2Seq model
 
-![Network architecture](/model_overview.png)
+### Model
+A typical flow is:
+1. **Encoder**: converts EEG sequences into latent features (often conv + RNN/GRU).
+2. **Attention**: lets the decoder focus on the most relevant encoder time steps.
+3. **Decoder**: predicts an audio representation step-by-step.
 
+### Training
+The training pipeline handles:
+- loss computation (classification or regression depending on mode)
+- logging (e.g., TensorBoard)
+- saving checkpoints (best model by validation loss)
+- optional saving of predictions for later evaluation/vocoding
 
-### EEG to Spectograms
+---
 
-In particular, we provide code for an RNN that presents an adaption NVIDIAs Tacotron2 model [3] to the specific type of data at hand. As such, the model consists of an encoder-decoder architecture with an upstream CNN that allows to downsample and filter the raw EEG input. 
+## Supported Modes
 
-(i) CNN: We present data of 112 channels to the network in a sliding window of 200ms with a hop of 15ms at  1024Hz. At first, a three layer convnet parses and downsamples this data about 100Hz and reduces the number of channels to 75. The convolution can be done one or two dimensional.
+This repository supports **Regression mode** for the audio target:
 
-(ii) RNN: We add sinusoidal positional embeddings (32) to this sequence and feed it into a bi-directional RNN encoder with 3 layers of GRUs which embeds the data in a hidden state of 256 dimensions. Furthermore, we employ a Bahdanau attention layer on the last layer activations of the encoder.  
+Mel-spectrogram (Regression mode)
+- The audio waveform is converted into a **mel spectrogram** (Tacotron-style mel extraction).
+- The model predicts **continuous mel values**.
+- Typical loss: **MSE / L1** on mel frames.
+- Useful if you want a representation that can later be vocoded back to waveform.
 
-(iii) Prediction:
-Both results are passed into a one layer GRU decoder which outputs a 256 dimensional representation for each point in time. A fully connected ELU layer followed by a linear layer regresses spectrogram predictions in 80 mel bins. On the one hand, this prediction is passed trough a fully connected Prenet which re-feeds the result into the GRU decoder for the next time step. On the other hand, it is also passed through a five layer 1 d convolutional network. The output is concatenated with the original prediction to give the final spectrogram prediction.
+> Even if some code labels this as “MFCC”, the actual transform is usually **mel spectrogram** (common in Tacotron/WaveGlow workflows).
 
-The default loss in our setting is MSE, albeit we also offer a cross entropy based loss calculation in the case of discretized mel bins (e.g. arising from clustering) which can make the task easier for smaller datasets. Moreover, as sEEG electrodes placement usually varies across patients, the model presented here is to be trained on each patient individually. Yet, we also provide code for joint training with a contrastive loss that incentives the model
-to minimize the embedding distance within but maximize across patients.
- 
+---
 
-### Spectograms to audio
-The predicted spectrograms can be passed trough any of the state of the art generative models for speech synthesis from spectograms. The current code is designed to create mel spectograms that can be fed right away into the flow based generative WaveGlow model from NVIDIA [4].
+## Outputs
+Depending on your config, the pipeline can produce:
+- **Model checkpoints** (best by validation loss)
+- **TensorBoard logs**
+- **Saved predictions** (e.g., numpy arrays of target vs predicted audio/mel)
+- In mel mode, it may optionally save example mel tensors for external vocoders
 
+---
 
-## Performance
-For the task at hand performance can be evaluated in various ways. Obsiously, we track the values of the objective function but we also provide measurements such as the Pearson-r correlation coefficient. This package also includes the DenseNet model from [2] as a baseline. Finally, the produced audio can be examined naturally.
+## How to Run
 
-
-![Some results](/results.png)
-
-
-
-
-### References
-[1] Herff, Christian, Dean J. Krusienski, and Pieter Kubben. "The Potential of Stereotactic-EEG for Brain-Computer Interfaces: Current Progress and Future Directions." Frontiers in Neuroscience 14 (2020): 123.
-
-[2] Angrick, Miguel, et al. "Speech synthesis from ECoG using densely connected 3D convolutional neural networks." Journal of neural engineering 16.3 (2019): 036019.
-
-[3] Shen, Jonathan, et al. "Natural tts synthesis by conditioning wavenet on mel spectrogram predictions." 2018 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2018.
-
-[4] Prenger, Ryan, Rafael Valle, and Bryan Catanzaro. "Waveglow: A flow-based generative network for speech synthesis." ICASSP 2019-2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2019. 
+```bash
+python main.py --config config.toml
+```
