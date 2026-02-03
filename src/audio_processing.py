@@ -2,8 +2,12 @@
 import torch
 import numpy as np
 from scipy.signal import get_window
-import librosa.util as librosa_util
+# import librosa.util as librosa_util
 
+try:
+    import librosa.util as librosa_util
+except Exception:
+    librosa_util = None
 
 def window_sumsquare(window, n_frames, hop_length=200, win_length=800,
                      n_fft=800, dtype=np.float32, norm=None):
@@ -39,14 +43,24 @@ def window_sumsquare(window, n_frames, hop_length=200, win_length=800,
 
     # Compute the squared window at the desired length
     win_sq = get_window(window, win_length, fftbins=True)
-    win_sq = librosa_util.normalize(win_sq, norm=norm)**2
-    win_sq = librosa_util.pad_center(win_sq, n_fft)
+    # win_sq = librosa_util.normalize(win_sq, norm=norm)**2
+    # win_sq = librosa_util.pad_center(win_sq, n_fft)
+    if librosa_util is not None:
+        win_sq = (librosa_util.normalize(win_sq, norm=norm) ** 2)
+        win_sq = librosa_util.pad_center(win_sq, size=n_fft)
+    else:
+        # if norm is None, keep as-is; otherwise do simple L2 normalize
+        if norm is not None:
+            denom = np.linalg.norm(win_sq, ord=2) + 1e-12
+            win_sq = win_sq / denom
+        win_sq = np.pad(win_sq, (0, max(0, n_fft - len(win_sq))), mode="constant")[:n_fft]
+        win_sq = win_sq ** 2
 
-    # Fill the envelope
-    for i in range(n_frames):
-        sample = i * hop_length
-        x[sample:min(n, sample + n_fft)] += win_sq[:max(0, min(n_fft, n - sample))]
-    return x
+        # Fill the envelope
+        for i in range(n_frames):
+            sample = i * hop_length
+            x[sample:min(n, sample + n_fft)] += win_sq[:max(0, min(n_fft, n - sample))]
+        return x
 
 
 def griffin_lim(magnitudes, stft_fn, n_iters=30):
@@ -59,7 +73,8 @@ def griffin_lim(magnitudes, stft_fn, n_iters=30):
 
     angles = np.angle(np.exp(2j * np.pi * np.random.rand(*magnitudes.size())))
     angles = angles.astype(np.float32)
-    angles = torch.autograd.Variable(torch.from_numpy(angles))
+    # angles = torch.autograd.Variable(torch.from_numpy(angles))
+    angles = torch.from_numpy(angles)
     signal = stft_fn.inverse(magnitudes, angles).squeeze(1)
 
     for i in range(n_iters):

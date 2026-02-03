@@ -6,59 +6,43 @@ from absl import flags, logging
 from pathlib import Path
 import numpy as np
 import torch 
-import MelFilterBank as mel
 from matplotlib import pyplot as plt
-import IPython
-from scipy import hanning
 from stft import STFT
-from librosa.filters import mel as librosa_mel_fn
-from librosa.core import resample
-from mne.filter import filter_data
 
-from scipy.signal import hilbert, decimate
-from scipy.fftpack import next_fast_len
+try:
+    import torchaudio
+    import torchaudio.functional as taF
+except Exception:
+    torchaudio = None
+    taF = None
+
+from scipy.signal import resample_poly
 
 # load defined functions by authors
 from audio_processing import dynamic_range_compression
 from audio_processing import dynamic_range_decompression
 
-
-flags.DEFINE_string('data_dir', '/local/home/stuff/data_kh4', '')
-flags.DEFINE_float('window_size', 200., 'in ms')
-flags.DEFINE_integer('sampling_rate_eeg', 200, '')
-flags.DEFINE_float('versatz_windows', 2., '')
-flags.DEFINE_integer('num_audio_classes', 256, '')
-
-
-flags.DEFINE_float('train_test_split', .90, '')   ########
-flags.DEFINE_boolean('use_MFCCs', True,'')
-flags.DEFINE_boolean('double_trouble', False,'')
-flags.DEFINE_boolean('patient_eight', False,'')
-
-flags.DEFINE_boolean('patient_thirteen', True,'')
-
 FLAGS = flags.FLAGS
-
 
 def mu_law(x): #for audio conversion from regression to classification
     return np.sign(x)*np.log(1+255*np.abs(x))/np.log(1+255)
 
-
 def mu_law_inverse(x):
     return np.sign(x)*(1./255)*(np.power(1.+255, np.abs(x)) - 1.)
-
 
 def audio_signal_to_classes(audio):
     audio=np.floor(128*mu_law(audio))
     audio = np.clip(audio, -128., 128.) / 128.
     audio = (audio + 1.) / 2.
-    audio = np.round(audio * (FLAGS.num_audio_classes - 1)).astype(np.int)
+    # audio = np.round(audio * (FLAGS.num_audio_classes - 1)).astype(np.int)
+    audio = np.round(audio * (FLAGS.num_audio_classes - 1)).astype(np.int64)
     return audio
 
 
 def audio_classes_to_signal_th(audio):
     audio = audio.detach().cpu().numpy()
-    audio = audio.astype(np.float) / (FLAGS.num_audio_classes - 1)
+    # audio = audio.astype(np.float) / (FLAGS.num_audio_classes - 1)
+    audio = audio.astype(np.float32) / (FLAGS.num_audio_classes - 1)
     audio = audio * 2. - 1.
     audio = audio * 128.
     audio = mu_law_inverse(audio / 128.)
@@ -140,11 +124,35 @@ class TacotronSTFT(torch.nn.Module):
         self.n_mel_channels = n_mel_channels
         self.sampling_rate = sampling_rate
         self.stft_fn = STFT(filter_length, hop_length, win_length) # hop and window length are in samples.
-        mel_basis = librosa_mel_fn(
-            sampling_rate, filter_length, n_mel_channels, mel_fmin, mel_fmax)    ### filter_length = number of FFT components
 
-        mel_basis = torch.from_numpy(mel_basis).float()
-        self.register_buffer('mel_basis', mel_basis)
+        n_freqs = filter_length // 2 + 1
+
+        if taF is not None:
+            mel_basis = taF.melscale_fbanks(
+                n_freqs=n_freqs,
+                f_min=mel_fmin,
+                f_max=mel_fmax,
+                n_mels=n_mel_channels,
+                sample_rate=sampling_rate,
+                norm=None,
+                mel_scale="htk",
+            ).T
+        else:
+            # last-resort: keep your original librosa path if you still want it
+            import librosa
+            mel_basis = librosa.filters.mel(
+                sr=sampling_rate,
+                n_fft=filter_length,
+                n_mels=n_mel_channels,
+                fmin=mel_fmin,
+                fmax=mel_fmax,
+                htk=True,
+                norm=None,
+            )
+            mel_basis = torch.from_numpy(mel_basis).float()
+
+        self.register_buffer("mel_basis", mel_basis.float())
+
 
     def spectral_normalize(self, magnitudes):
         output = dynamic_range_compression(magnitudes)
@@ -163,16 +171,17 @@ class TacotronSTFT(torch.nn.Module):
         -------
         mel_output: torch.FloatTensor of shape (B, n_mel_channels, T)
         """
-        assert(torch.min(y.data) >= -1)
-        assert(torch.max(y.data) <= 1)
+        y_det = y.detach()
+        assert torch.min(y_det) >= -1
+        assert torch.max(y_det) <= 1
+
         magnitudes, phases = self.stft_fn.transform(y)
-        magnitudes = magnitudes.data
+        # magnitudes = magnitudes.data
+        magnitudes = magnitudes.detach()
         mel_output = torch.matmul(self.mel_basis, magnitudes)
         mel_output = self.spectral_normalize(mel_output)
-        if (FLAGS.OLS or FLAGS.DenseModel):
-            return mel_output[:,:,3].unsqueeze(-1)
-            #stft_fn.transform pads sequence with reflection to be twice the original size.
-            #hence 5 MFCC framea are produced for the 50ms window. We take the middle one which should correspond best to the original frame.
+        if (getattr(FLAGS, "OLS", False) or getattr(FLAGS, "DenseModel", False)):
+            return mel_output[:, :, 3].unsqueeze(-1)
         else:
             return mel_output
 
@@ -183,9 +192,15 @@ def create_audio_plot(audios_with_labels):
         ax.plot(audio.detach().cpu().numpy(), label=label)
     ax.legend(loc='best')
     fig.canvas.draw()
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    return torch.from_numpy(data).float() / 255
+
+    # RGBA buffer -> numpy array (H, W, 4)
+    buf = np.asarray(fig.canvas.buffer_rgba())
+
+    # drop alpha -> RGB (H, W, 3)
+    rgb = buf[..., :3].copy()
+
+    return torch.from_numpy(rgb).float() / 255.0
+
 
 def create_MFCC_plot(MFCCs, targets):
     fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True)
@@ -193,36 +208,39 @@ def create_MFCC_plot(MFCCs, targets):
     
     ax[1].imshow(MFCCs.detach().cpu().numpy(), cmap='viridis',aspect='auto') 
     fig.canvas.draw()
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-    return torch.from_numpy(data.transpose(1,0,2)).float() / 255
+
+    # buffer_rgba() gives an (H, W, 4) uint8 array (RGBA)
+    buf = np.asarray(fig.canvas.buffer_rgba())
+
+    # convert to RGB (H, W, 3)
+    data = buf[..., :3].copy()
+
+    # keep your original transpose behavior (swap H/W)
+    return torch.from_numpy(data.transpose(1, 0, 2)).float() / 255.0
+
 
 
 def get_data(split='train', hop=None):
-    data_dir = Path(FLAGS.data_dir) 
+    data_dir = Path(FLAGS.data_dir) #->google drive contents
 
     
     if FLAGS.patient_eight:
         audio=np.load(str(data_dir / "kh8_1_sentences_audio.npy"))
     elif FLAGS.patient_thirteen:
-
-
         audio=np.load('/local/home/stuff/data_kh13/kh13_audio_resampled_31_clean.npy')
         audio[np.where(audio>1)]=0.9999 #some outliers
         audio[np.where(audio<-1)]=-0.9999
     else:    
-        audio=np.load(str(data_dir / "kh4_1_audio.npy"))
+        print("Loading audio data from: ", data_dir / "p2_audio_final.npy")
+        audio=np.load(str(data_dir / "p2_audio_final.npy"))
 
    #prepend data of kh4 to boost prediction of kh8
     if FLAGS.double_trouble:
         audio2=np.load(str(data_dir / "kh4_1_audio.npy"))
         audio=np.concatenate((audio2,audio))
 
+        audio = resample_poly(audio, up=int(targetSR), down=int(audioSamplingRate))
 
-    audioSamplingRate = 48000
-    targetSR = 22050
-    if not FLAGS.patient_thirteen:
-        audio=resample(audio, audioSamplingRate, targetSR)
 
     if FLAGS.patient_eight:
         if (FLAGS.convolve_eeg_1d or FLAGS.convolve_eeg_2d):
@@ -245,14 +263,13 @@ def get_data(split='train', hop=None):
 
         FLAGS.sampling_rate_eeg=1024 #200 is default
     else:
-        #sEEG_beta=np.load(str(data_dir / "sEEG_beta_200hz.npy"))
-        #sEEG_gamma=np.load(str(data_dir / "sEEG_gamma_200hz.npy")) #.T only for 1khz
-
-        sEEG_beta=np.load(str(data_dir / "sEEG_beta_1khz.npy")).T
-        sEEG_gamma=np.load(str(data_dir / "sEEG_gamma_1khz.npy")).T #.T only for 1khz
-        eeg = np.concatenate((sEEG_beta, sEEG_gamma), axis=1)
+        
+        print("Loading sEEG data from: ", data_dir / "p2_sEEG_processed.npy")
+        sEEG_gamma=np.load(str(data_dir / "p2_sEEG_processed.npy")).T #.T only for 1khz
+        eeg = sEEG_gamma
+        if eeg.ndim == 2 and eeg.shape[0] < eeg.shape[1]:
+            eeg = eeg.T
         FLAGS.sampling_rate_eeg=1024
-
 
     if FLAGS.double_trouble:
         sEEG_beta2=np.load(str(data_dir / "sEEG_beta_1khz.npy"))
@@ -266,17 +283,35 @@ def get_data(split='train', hop=None):
         eeg=np.concatenate((eeg,zero_one), axis=1)  #add one channel that indicates patient 4 (0) or patient 8 (1)
 
 
-    audio_eeg_sample_ratio = len(audio) / len(eeg) #make this an int??
-    
+    # audio_eeg_sample_ratio = len(audio) / len(eeg) #make this an int??
+    audio_eeg_sample_ratio = audio.shape[0] / eeg.shape[0]
+    print(f"Audio to EEG sample ratio: {audio_eeg_sample_ratio}, eeg: {eeg.shape}, audio: {audio.shape}")
     if not FLAGS.use_MFCCs:
         audio = audio_signal_to_classes(audio)
     
     num_train_samples = round(len(eeg) * FLAGS.train_test_split)
     num_train_samples_audio = round(len(audio) * FLAGS.train_test_split)
-    
+
+        #validation:
+    num_val = round(num_train_samples * FLAGS.train_val_split)
+    num_val_audio = round(num_train_samples_audio * FLAGS.train_val_split)
+
+    if split == 'train':
+        eeg = eeg[:num_val]
+        audio = audio[:num_val_audio]
+    elif split == 'val':
+        eeg = eeg[num_val:num_train_samples]
+        audio = audio[num_val_audio:num_train_samples_audio]
+    elif split == 'test':
+        eeg = eeg[num_train_samples:]
+        audio = audio[num_train_samples_audio:]
+    else:
+        raise ValueError(f"Unknown split: {split}")
+
+
     num_test_samples = len(eeg)-num_train_samples
     num_test_samples_audio = len(audio)-num_train_samples_audio
-
+    '''
     test_set_beginning=False
     if test_set_beginning:
         if split == 'train':
@@ -293,6 +328,7 @@ def get_data(split='train', hop=None):
         elif split == 'test':
             eeg = eeg[num_train_samples:]
             audio = audio[num_train_samples_audio:]
+    '''
 
     if FLAGS.double_trouble and split == 'train':
         np.random.shuffle(audio)
@@ -305,6 +341,8 @@ def get_data(split='train', hop=None):
         audio = torch.from_numpy(audio).float()
     else:
         audio = torch.from_numpy(audio).long()
+
+    print(f"Created {split} dataset with {len(eeg)} samples.")
 
     return EEGAudioDataset(eeg, audio, FLAGS.num_audio_classes,audio_eeg_sample_ratio, hop=hop)
 
@@ -321,7 +359,7 @@ class EEGAudioDataset(torch.utils.data.Dataset):
 
         self.num_audio_classes = num_audio_classes #only meaningful if direct audio is synthesized
 
-        window_size_eeg=FLAGS.window_size / 1000 * FLAGS.sampling_rate_eeg
+        window_size_eeg=FLAGS.window_size / 1000 * FLAGS.sampling_rate_eeg #-> 200/1000 * 1024 = 200
         self.window_size_eeg = round(window_size_eeg)
         self.versatz_eeg=round(window_size_eeg*FLAGS.versatz_windows)
         self.window_size_audio=round(window_size_eeg * self.audio_eeg_sample_ratio)
@@ -337,13 +375,36 @@ class EEGAudioDataset(torch.utils.data.Dataset):
         ''')
 
     def __len__(self):
-        num_samples = len(self.eeg) - 2 * self.versatz_eeg - self.window_size_eeg
-        return num_samples // self.hop # integer division
+        # maximum allowed start index for idx_eeg (in EEG samples)
+        max_start = len(self.eeg) - (2 * self.versatz_eeg + self.window_size_eeg)
+
+        # if the window doesn't fit even once, dataset is empty
+        if max_start < 0:
+            return 0
+
+        # guard against invalid hop (can happen if hop ms is too small and rounds to 0)
+        hop = max(1, int(self.hop))
+
+        # idx can be 0..floor(max_start/hop), so count is +1
+        return (max_start // hop) + 1
 
     def __getitem__(self, idx):
         idx_eeg = idx*self.hop+self.versatz_eeg
         idx_audio = round(idx_eeg*self.audio_eeg_sample_ratio) #(includes versatz in audio)
         eeg = self.eeg[idx_eeg-self.versatz_eeg:idx_eeg+self.window_size_eeg+self.versatz_eeg]
-        audio = self.audio[idx_audio:idx_audio+self.window_size_audio]
+        # audio = self.audio[idx_audio:idx_audio+self.window_size_audio]
+        start = idx_audio
+        end = idx_audio + self.window_size_audio
+
+        if start < 0 or end > self.audio.shape[0]:
+            raise IndexError(
+                f"Audio slice out of bounds: [{start}:{end}] of {self.audio.shape[0]}. "
+                f"(idx={idx}, idx_eeg={idx_eeg}, ratio={self.audio_eeg_sample_ratio:.4f}, "
+                f"window_size_audio={self.window_size_audio})"
+            )
+
+        audio = self.audio[start:end]
+        #print(f"audio samples: {self.window_size_audio}, while eeg has samples: {self.versatz_eeg} or {self.window_size_eeg}, ratio: {self.audio_eeg_sample_ratio}, window_size: {FLAGS.window_size}, data shape: eeg {self.eeg.shape}, audio {self.audio.shape}")
+        
         return eeg, audio
 

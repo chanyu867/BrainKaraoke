@@ -1,42 +1,42 @@
-# config.toml
-
-[run]
-cuda_visible_devices = "6"
-
-[train]
-final_eval = true
-epochs = 110
-batch_size = 521
-learning_rate = 0.001
-window_size = 333
+[flags]
+batch_size = 512
+hop_in_ms = 25
+optim = "Adam"
+learning_rate = 0.0005
+laplace_smoothing = 0.01
 teacher_forcing_ratio = 0.1
-debug = false
-
-[model]
-hidden_size = 333
-dropout = 0.1
-use_bahdanau_attention = true
-
-pre_and_postnet = true
-pre_and_postnet_dim = 256
-
-convolve_eeg_1d = false
-convolve_eeg_2d = true
-convolve_eeg_3d = false
-
-OLS = false
-DenseModel = false
-
-use_MFCCs = true
-discretize_MFCCs = false
-
-mixed_loss = false
-double_trouble = false
-
-[subject]
-patient_eight = false
-patient_thirteen = true
-
-[swa]
-SWA = false
+gpus = 1
+epochs = 50
+num_mel_centroids = 12
+debug = False
+clean_logs_dir = False
+final_eval = False
+SWA = False
 swa_start = 140
+OLS = False
+DenseModel = False
+discretize_MFCCs = False
+mixed_loss = False
+hidden_size = 333
+n_layers = 3
+n_layers_decoder = 1
+dropout = 0.5
+n_pos = 32
+use_bahdanau_attention = True
+convolve_eeg_1d = True
+convolve_eeg_2d = False
+convolve_eeg_3d = False
+pre_and_postnet = True
+pre_and_postnet_dim = 256
+data_dir = "/content/drive/MyDrive/Advance_python_project"
+window_size = 400.0
+sampling_rate_eeg = 1024
+versatz_windows = 1.0
+num_audio_classes = 256
+train_test_split = 0.90
+train_val_split = 0.9
+use_MFCCs = True
+double_trouble = False
+patient_eight = False
+patient_thirteen = False
+lr_milestones = [45]

@@ -27,11 +27,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import torch
 import numpy as np
 import torch.nn.functional as F
-from torch.autograd import Variable
+# from torch.autograd import Variable
 from scipy.signal import get_window
-from librosa.util import pad_center, tiny
+# from librosa.util import pad_center, tiny
+
 from audio_processing import window_sumsquare
 import IPython
+
+try:
+    from librosa.util import pad_center, tiny
+except Exception:
+    import numpy as _np
+
+    def pad_center(data, size):
+        data = _np.asarray(data)
+        if len(data) >= size:
+            return data[:size]
+        pad = size - len(data)
+        left = pad // 2
+        right = pad - left
+        return _np.pad(data, (left, right), mode="constant")
+
+    def tiny(x):
+        x = _np.asarray(x)
+        return _np.finfo(x.dtype).tiny if _np.issubdtype(x.dtype, _np.floating) else _np.finfo(_np.float32).tiny
+    
 
 class STFT(torch.nn.Module):
     """adapted from Prem Seetharaman's https://github.com/pseeth/pytorch-stft"""
@@ -58,7 +78,7 @@ class STFT(torch.nn.Module):
             assert(filter_length >= win_length)
             # get window and zero center pad it to filter_length
             fft_window = get_window(window, win_length, fftbins=True)
-            fft_window = pad_center(fft_window, filter_length)
+            fft_window = pad_center(fft_window, size=filter_length)
             fft_window = torch.from_numpy(fft_window).float()
 
             # window the bases
@@ -84,7 +104,8 @@ class STFT(torch.nn.Module):
         input_data = input_data.squeeze(1)
         forward_transform = F.conv1d(
             input_data,
-            Variable(self.forward_basis, requires_grad=False),
+            # Variable(self.forward_basis, requires_grad=False),
+            self.forward_basis,
             stride=self.hop_length,
             padding=0)
 
@@ -92,8 +113,9 @@ class STFT(torch.nn.Module):
         real_part = forward_transform[:, :cutoff, :]
         imag_part = forward_transform[:, cutoff:, :]
         magnitude = torch.sqrt(real_part**2 + imag_part**2)
-        phase = torch.autograd.Variable(
-            torch.atan2(imag_part.data, real_part.data))
+        # phase = torch.autograd.Variable(
+        #     torch.atan2(imag_part.data, real_part.data))
+        phase = torch.atan2(imag_part, real_part)
 
         return magnitude, phase
 
@@ -103,7 +125,8 @@ class STFT(torch.nn.Module):
 
         inverse_transform = F.conv_transpose1d(
             recombine_magnitude_phase,
-            Variable(self.inverse_basis, requires_grad=False),
+            # Variable(self.inverse_basis, requires_grad=False),
+            self.inverse_basis,
             stride=self.hop_length,
             padding=0)
 
@@ -115,9 +138,10 @@ class STFT(torch.nn.Module):
             # remove modulation effects
             approx_nonzero_indices = torch.from_numpy(
                 np.where(window_sum > tiny(window_sum))[0])
-            window_sum = torch.autograd.Variable(
-                torch.from_numpy(window_sum), requires_grad=False)
-            window_sum = window_sum.cuda() if magnitude.is_cuda else window_sum
+            # window_sum = torch.autograd.Variable(
+            #     torch.from_numpy(window_sum), requires_grad=False)
+            # window_sum = window_sum.cuda() if magnitude.is_cuda else window_sum
+            window_sum = torch.from_numpy(window_sum).to(device=magnitude.device)
             inverse_transform[:, :, approx_nonzero_indices] /= window_sum[approx_nonzero_indices]
 
             # scale by hop ratio
