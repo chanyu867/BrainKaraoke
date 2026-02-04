@@ -12,7 +12,7 @@ hs=333
 dro=0.1
 pnpndim=256
 
-python3 eeg_main.py \
+python3 -m src.eeg_main \
     --SWA=False --swa_start $swas \
     --dropout $dro --convolve_eeg_1d=False --convolve_eeg_2d=True --convolve_eeg_3d=False \
     --use_bahdanau_attention=True \

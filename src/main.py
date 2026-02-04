@@ -10,8 +10,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 import tomllib
 
-import dataset
-from pipeline import Model
+from src import dataset
+from src.pipeline import Model
 
 
 import logging

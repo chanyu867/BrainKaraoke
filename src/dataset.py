@@ -18,8 +18,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # load defined functions by authors
-from audio_processing import dynamic_range_compression
-from audio_processing import dynamic_range_decompression
+from src.audio_processing import dynamic_range_compression
+from src.audio_processing import dynamic_range_decompression
 
 FLAGS = flags.FLAGS
 

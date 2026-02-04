@@ -5,8 +5,7 @@ import torch
 import pytorch_lightning as pl
 import numpy as np
 # load defined functions by authors
-import dataset
-import models
+from src import dataset, models
 from two_sample_distance import pdist
 import random
 from pathlib import Path
