@@ -1,4 +1,6 @@
-# Let brain talk! (sEEG → Audio)
+<img width="1529" height="743" alt="Brainkaraoke_title_image" src="https://github.com/user-attachments/assets/8d523230-c2db-432d-880e-62904bb70316" />
+
+# Let brain talk!
 
 This project trains a **sequence-to-sequence (Seq2Seq) neural model** that learns a mapping from **EEG/sEEG time-series windows** to an **audio representation**. The goal is to predict audio content aligned to brain activity, using an encoder–decoder model with attention.
 
@@ -59,3 +61,8 @@ chmod +x preprocess.sh show_details.sh train.sh waveglow.sh
 ## 4. calculate performance of trained model
 ./test_performance.sh
 ```
+
+## Output examples
+
+<img width="1298" height="396" alt="GT_vs_inferred_mel_spectrogram" src="https://github.com/user-attachments/assets/563ab609-4a08-450c-b501-05bc0553c7da" />
+
