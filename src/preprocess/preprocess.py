@@ -7,7 +7,8 @@ Usage:
 """
 
 from __future__ import annotations
-
+import logging
+logger = logging.getLogger(__name__)
 import argparse
 from pathlib import Path
 
@@ -45,16 +46,16 @@ def run(input_path: Path, output_path: Path, fs: int, overwrite: bool) -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    print(f"Loading raw data from: {input_path}")
+    logger.info(f"Loading raw data from: {input_path}")
     raw = np.load(str(input_path))
-    print(f"Raw shape: {raw.shape} dtype={raw.dtype}")
+    logger.info(f"Raw shape: {raw.shape} dtype={raw.dtype}")
 
-    print(f"Running preprocess_high_gamma(fs={fs}) ...")
+    logger.info(f"Running preprocess_high_gamma(fs={fs}) ...")
     clean = preprocess_high_gamma(raw, fs=fs)
-    print(f"Processed shape: {clean.shape} dtype={clean.dtype}")
+    logger.info(f"Processed shape: {clean.shape} dtype={clean.dtype}")
 
     np.save(str(output_path), clean)
-    print(f"✅ Saved processed file to: {output_path}")
+    logger.info(f"✅ Saved processed file to: {output_path}")
 
 
 def main() -> None:

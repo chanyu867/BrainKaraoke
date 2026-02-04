@@ -15,7 +15,8 @@ Reference: :contentReference[oaicite:1]{index=1}
 """
 
 from __future__ import annotations
-
+import logging
+logger = logging.getLogger(__name__)
 import argparse
 import os
 import numpy as np
@@ -124,7 +125,7 @@ def line_noise_power_ratio(
 
 def summarize_array(a: np.ndarray, name: str) -> None:
     a = np.asarray(a)
-    print(
+    logger.info(
         f"{name}: mean={a.mean():.4g}  median={np.median(a):.4g}  "
         f"p05={np.percentile(a, 5):.4g}  p95={np.percentile(a, 95):.4g}  "
         f"min={a.min():.4g}  max={a.max():.4g}"
@@ -140,14 +141,14 @@ def run_car_checks(
     bw: float,
 ) -> None:
     eeg = load_eeg_time_channels(eeg_path)
-    print("Loaded EEG:", eeg.shape, eeg.dtype)
+    logger.info(f"Loaded EEG: {eeg.shape}, {eeg.dtype}")
 
     T, C = eeg.shape
-    print(f"T={T} samples, C={C} channels")
+    logger.info(f"T={T} samples, C={C} channels")
 
     N = min(T, fs * seconds)
     x = eeg[:N].astype(np.float64)  # stable stats
-    print("Using segment:", x.shape, f"({N/fs:.1f} s)")
+    logger.info(f"Using segment: {x.shape} ({N/fs:.1f} s)")
 
     x_car = apply_car(x)
 
@@ -164,37 +165,37 @@ def run_car_checks(
     ln60_before = line_noise_power_ratio(x, fs=fs, f0=60.0, bw=bw, max_channels=max_channels, seed=seed)
     ln60_after = line_noise_power_ratio(x_car, fs=fs, f0=60.0, bw=bw, max_channels=max_channels, seed=seed)
 
-    print("\n=== Per-channel variance ===")
+    logger.info("=== Per-channel variance ===")
     summarize_array(var_before, "var_before")
     summarize_array(var_after, "var_after")
 
-    print("\n=== Variance ratio (after/before) ===")
+    logger.info("=== Variance ratio (after/before) ===")
     summarize_array(ratio, "var_ratio")
-    print("Channels with variance >2x after CAR :", int(np.sum(ratio > 2.0)), "/", C)
-    print("Channels with variance <0.5x after CAR:", int(np.sum(ratio < 0.5)), "/", C)
+    logger.info(f"Channels with variance >2x after CAR : {int(np.sum(ratio > 2.0))} / {C}")
+    logger.info(f"Channels with variance <0.5x after CAR: {int(np.sum(ratio < 0.5))} / {C}")
 
-    print("\n=== Mean pairwise correlation (subsampled) ===")
-    print("corr_before:", corr_before)
-    print("corr_after :", corr_after)
-    print("delta_corr :", corr_after - corr_before)
+    logger.info("=== Mean pairwise correlation (subsampled) ===")
+    logger.info(f"corr_before: {corr_before}")
+    logger.info(f"corr_after : {corr_after}")
+    logger.info(f"delta_corr : {corr_after - corr_before}")
 
-    print("\n=== Line-noise power ratio (band/1–200Hz), subsampled ===")
-    print(f"50Hz before={ln50_before:.6f}  after={ln50_after:.6f}  change={(ln50_after-ln50_before):.6f}")
-    print(f"60Hz before={ln60_before:.6f}  after={ln60_after:.6f}  change={(ln60_after-ln60_before):.6f}")
+    logger.info("=== Line-noise power ratio (band/1–200Hz), subsampled ===")
+    logger.info(f"50Hz before={ln50_before:.6f}  after={ln50_after:.6f}  change={(ln50_after-ln50_before):.6f}")
+    logger.info(f"60Hz before={ln60_before:.6f}  after={ln60_after:.6f}  change={(ln60_after-ln60_before):.6f}")
 
-    print("\n=== Quick interpretation heuristics ===")
+    logger.info("=== Quick interpretation heuristics ===")
     if (ln50_after < ln50_before) or (ln60_after < ln60_before):
-        print("✅ Line-noise ratio decreased for at least one of 50/60 Hz (CAR may help denoise).")
+        logger.info("✅ Line-noise ratio decreased for at least one of 50/60 Hz (CAR may help denoise).")
     else:
-        print("⚠️ Line-noise ratio did not decrease (CAR may not help line noise for this segment).")
+        logger.info("⚠️ Line-noise ratio did not decrease (CAR may not help line noise for this segment).")
 
     if np.sum(ratio > 2.0) > 0:
-        print("⚠️ Some channels increased variance >2× after CAR (bad channels may contaminate CAR).")
+        logger.info("⚠️ Some channels increased variance >2× after CAR (bad channels may contaminate CAR).")
 
     if corr_after < corr_before - 0.1:
-        print("⚠️ Pairwise correlation dropped a lot; CAR may be over-subtracting shared signal.")
+        logger.info("⚠️ Pairwise correlation dropped a lot; CAR may be over-subtracting shared signal.")
     else:
-        print("✅ Correlation change is moderate; CAR effect seems reasonable.")
+        logger.info("✅ Correlation change is moderate; CAR effect seems reasonable.")
 
 
 # ---------------------------
@@ -209,7 +210,7 @@ def estimate_audio_sr(audio_path: str, eeg_path: str, eeg_rate: int) -> float:
 
 
 def run_audio_sr_forensics(audio_path: str, eeg_path: str, eeg_rate: int) -> None:
-    print("--- 🕵️ AUDIO SAMPLE RATE FORENSICS ---")
+    logger.info("--- 🕵️ AUDIO SAMPLE RATE FORENSICS ---")
 
     if not os.path.exists(audio_path) or not os.path.exists(eeg_path):
         raise FileNotFoundError("Audio or EEG file not found. Check your paths.")
@@ -219,27 +220,27 @@ def run_audio_sr_forensics(audio_path: str, eeg_path: str, eeg_rate: int) -> Non
     ratio = audio_samples / max(eeg_samples, 1)
     estimated_sr = ratio * eeg_rate
 
-    print("\n📝 THE MATH:")
-    print(f"1. Audio Samples (N) = {audio_samples:,}")
-    print(f"2. EEG Samples (M)   = {eeg_samples:,}")
-    print(f"3. EEG Rate (Hz)     = {eeg_rate}")
-    print("-" * 40)
-    print("Formula:  (Audio_Samples / EEG_Samples) * EEG_Rate = Audio_SR")
-    print(f"Calc:     ({audio_samples} / {eeg_samples}) * {eeg_rate}")
-    print(f"Ratio:    {ratio:.4f} audio samples per 1 EEG sample")
-    print(f"Result:   {ratio:.4f} * {eeg_rate} = {estimated_sr:.2f} Hz")
-    print("-" * 40)
+    logger.info("\n📝 THE MATH:")
+    logger.info(f"1. Audio Samples (N) = {audio_samples:,}")
+    logger.info(f"2. EEG Samples (M)   = {eeg_samples:,}")
+    logger.info(f"3. EEG Rate (Hz)     = {eeg_rate}")
+    logger.info("-" * 40)
+    logger.info("Formula:  (Audio_Samples / EEG_Samples) * EEG_Rate = Audio_SR")
+    logger.info(f"Calc:     ({audio_samples} / {eeg_samples}) * {eeg_rate}")
+    logger.info(f"Ratio:    {ratio:.4f} audio samples per 1 EEG sample")
+    logger.info(f"Result:   {ratio:.4f} * {eeg_rate} = {estimated_sr:.2f} Hz")
+    logger.info("-" * 40)
 
-    print("\n⚖️ VERDICT:")
+    logger.info("\n⚖️ VERDICT:")
     if 44000 < estimated_sr < 50000:
-        print(f"🚨 FOUND: ~48,000 Hz ({int(estimated_sr)} Hz)")
-        print("   -> STATUS: likely RAW / NOT DOWNSAMPLED (for a 22.05k pipeline).")
+        logger.info(f"🚨 FOUND: ~48,000 Hz ({int(estimated_sr)} Hz)")
+        logger.info("   -> STATUS: likely RAW / NOT DOWNSAMPLED (for a 22.05k pipeline).")
     elif 20000 < estimated_sr < 24000:
-        print(f"✅ FOUND: ~22,050 Hz ({int(estimated_sr)} Hz)")
-        print("   -> STATUS: likely correctly downsampled.")
+        logger.info(f"✅ FOUND: ~22,050 Hz ({int(estimated_sr)} Hz)")
+        logger.info("   -> STATUS: likely correctly downsampled.")
     else:
-        print(f"⚠️ FOUND: {int(estimated_sr)} Hz")
-        print("   -> STATUS: unknown / nonstandard; double check EEG rate and preprocessing.")
+        logger.info(f"⚠️ FOUND: {int(estimated_sr)} Hz")
+        logger.info("   -> STATUS: unknown / nonstandard; double check EEG rate and preprocessing.")
 
 
 # ---------------------------

@@ -4,12 +4,15 @@ from scipy.signal import hilbert
 
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 def preprocess_high_gamma(data, fs=1024):
-    print(f"--- Processing Data (Shape: {data.shape}) ---")
+    logger.info(f"--- Processing Data (Shape: {data.shape}) ---")
 
     # Ensure shape is (Time, Channels)
     if data.shape[0] < data.shape[1]:
-        print("Transposing input to (Time, Channels)...")
+        logger.info("Transposing input to (Time, Channels)...")
         data = data.T
 
     n_samples, n_channels = data.shape
@@ -36,13 +39,13 @@ def preprocess_high_gamma(data, fs=1024):
     sos_bp = signal.butter(N=8, Wn=[70, 170], btype='bandpass', fs=fs, output='sos')
 
     # 2. Process Channel by Channel
-    print(f"Applying Filters & Hilbert Transform...")
+    logger.info(f"Applying Filters & Hilbert Transform...")
     for ch in range(n_channels):
         sig = data[:, ch]
 
         # Apply Notch
         for harmonics in (50, 100):
-            sos50 = elliptic_notch_sos(harmonics, FS, order=8, half_width_hz=0.5, rp=0.5, rs=60)
+            sos50 = elliptic_notch_sos(harmonics, fs, order=8, half_width_hz=0.5, rp=0.5, rs=60)
             sig = signal.sosfiltfilt(sos50, sig)
 
         # Apply Bandpass
@@ -53,6 +56,6 @@ def preprocess_high_gamma(data, fs=1024):
         processed_data[:, ch] = np.abs(analytic_sig)
 
         if (ch+1) % 20 == 0:
-            print(f"  Channel {ch+1}/{n_channels} done.")
+            logger.info(f"  Channel {ch+1}/{n_channels} done.")
 
     return processed_data

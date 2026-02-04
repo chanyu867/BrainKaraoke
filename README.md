@@ -47,12 +47,15 @@ pip install -r requirements.txt
 chmod +x preprocess.sh show_details.sh train.sh waveglow.sh
 
 ## 1. preprocessing data and check data details
-preprocess.sh
-show_details.sh
+./preprocess.sh
+./show_details.sh
 
 ## 2. start training
-train.sh
+./train.sh
 
 ## 3. convert inferred mel into audio format(mp3)
-waveglow.sh
+./waveglow.sh
+
+## 4. calculate performance of trained model
+./test_performance.sh
 ```

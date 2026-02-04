@@ -1,0 +1,24 @@
+# Core
+numpy
+scipy
+matplotlib
+
+# Deep Learning
+torch
+pytorch-lightning
+torchaudio
+
+# Utilities / Framework
+absl-py
+scikit-learn
+mne
+
+# Audio (optional but recommended)
+librosa
+
+# Shell utilities
+sh
+
+# Notebook support
+ipython
+notebook

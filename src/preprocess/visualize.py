@@ -14,6 +14,10 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 from scipy import signal
 from scipy.signal import welch
 
@@ -41,19 +45,19 @@ def ensure_time_by_channels(x: np.ndarray) -> np.ndarray:
 
 
 def print_stats(path: str, x: np.ndarray) -> None:
-    print(f"--- File: {path} ---")
-    print(f"Shape: {x.shape}  (time, channels)")
-    print(f"Min Value: {x.min():.4f}")
-    print(f"Max Value: {x.max():.4f}")
+    logger.info(f"--- File: {path} ---")
+    logger.info(f"Shape: {x.shape}  (time, channels)")
+    logger.info(f"Min Value: {x.min():.4f}")
+    logger.info(f"Max Value: {x.max():.4f}")
 
     if x.min() < 0:
-        print("\nanalysis result: RAW DATA DETECTED ⚠️")
-        print("The data contains negative values. This is likely raw voltage.")
-        print("Action needed: You MUST run the preprocessing script.")
+        logger.info("\nanalysis result: RAW DATA DETECTED ⚠️")
+        logger.info("The data contains negative values. This is likely raw voltage.")
+        logger.info("Action needed: You MUST run the preprocessing script.")
     else:
-        print("\nanalysis result: PREPROCESSED DATA ✅")
-        print("The data is strictly positive. This is likely the High-Gamma Envelope.")
-        print("Action needed: None. You can run the training directly.")
+        logger.info("\nanalysis result: PREPROCESSED DATA ✅")
+        logger.info("The data is strictly positive. This is likely the High-Gamma Envelope.")
+        logger.info("Action needed: None. You can run the training directly.")
 
 
 def get_channel_segment(x: np.ndarray, channel: int, n_samples: int) -> np.ndarray:
