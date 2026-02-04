@@ -3,23 +3,16 @@
 This project trains a **sequence-to-sequence (Seq2Seq) neural model** that learns a mapping from **EEG/sEEG time-series windows** to an **audio representation**. The goal is to predict audio content aligned to brain activity, using an encoder–decoder model with attention.
 
 The codebase is structured as:
-- an entry script that launches training (`main.py`)
-- a dataset/preprocessing layer (EEG + audio loading, alignment, transforms)
-- a model definition (encoder/decoder + attention)
-- a training pipeline (PyTorch Lightning module, loss/metrics, checkpoints)
-
-
+- A preprocessing script for both sEEG data and audio data. EEG preprocessing is not supported.
+- A model training script for RNN model, which infer mel-spectrogram from SEEG data.
+- A simple script to run waveglow pipeline with pre-trained weights to convert inferred mel-spectrogram into audio format(mp3).
+- A simple script to show the data details and visualize the results.
 
 ## Concept Overview
 
 ### Inputs
 - **ECoG/EEG (or sEEG) signal**: a 1D or multi-channel brain signal sampled over time.
 - **Audio signal**: raw waveform aligned (in time) to the EEG.
-
-The dataset layer handles:
-- reading data from files (typically `.npy` arrays)
-- splitting into train/val/test
-- preparing synchronized EEG/audio segments suitable for a Seq2Seq model
 
 ### Model
 A typical flow is:
@@ -34,12 +27,7 @@ The training pipeline handles:
 - saving checkpoints (best model by validation loss)
 - optional saving of predictions for later evaluation/vocoding
 
-
-
 ## Supported Modes
-
-This repository supports **Regression mode** for the audio target:
-
 Mel-spectrogram (Regression mode)
 - The audio waveform is converted into a **mel spectrogram** (Tacotron-style mel extraction).
 - The model predicts **continuous mel values**.
@@ -47,20 +35,24 @@ Mel-spectrogram (Regression mode)
 - Useful if you want a representation that can later be vocoded back to waveform.
 
 > Even if some code labels this as “MFCC”, the actual transform is usually **mel spectrogram** (common in Tacotron/WaveGlow workflows).
-
-
-
-## Outputs
-Depending on your config, the pipeline can produce:
-- **Model checkpoints** (best by validation loss)
-- **TensorBoard logs**
-- **Saved predictions** (e.g., numpy arrays of target vs predicted audio/mel)
-- In mel mode, it may optionally save example mel tensors for external vocoders
-
-
+> During the training, checkpoints for each epoch will be saved in specified directory.
 
 ## How to Run
 
 ```bash
-python main.py --config config.toml
+## 0. set environments
+git clone https://github.com/chanyu867/BrainKaraoke.git
+cd Brainkaraoke
+pip install -r requirements.txt
+chmod +x preprocess.sh show_details.sh train.sh waveglow.sh
+
+## 1. preprocessing data and check data details
+preprocess.sh
+show_details.sh
+
+## 2. start training
+train.sh
+
+## 3. convert inferred mel into audio format(mp3)
+waveglow.sh
 ```
