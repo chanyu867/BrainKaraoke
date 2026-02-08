@@ -14,6 +14,20 @@ logger = logging.getLogger(__name__)
 
 FLAGS = flags.FLAGS
 
+#define dummy flag values for testing
+def _define_if_missing(name, define_fn, default, help_str):
+    if name not in FLAGS:
+        define_fn(name, default, help_str)
+
+_define_if_missing("dropout", flags.DEFINE_float, 0.5, "Dropout rate")
+_define_if_missing("hidden_size", flags.DEFINE_integer, 333, "Hidden size")
+_define_if_missing("n_layers", flags.DEFINE_integer, 3, "Encoder GRU layers")
+_define_if_missing("n_layers_decoder", flags.DEFINE_integer, 1, "Decoder GRU layers")
+_define_if_missing("n_pos", flags.DEFINE_integer, 32, "Positional encoding size")
+_define_if_missing("use_MFCCs", flags.DEFINE_bool, True, "Use MFCCs (continuous) mode")
+_define_if_missing("use_bahdanau_attention", flags.DEFINE_bool, True, "Use Bahdanau-style attention")
+_define_if_missing("pre_and_postnet", flags.DEFINE_bool, True, "Enable prenet/postnet")
+_define_if_missing("pre_and_postnet_dim", flags.DEFINE_integer, 256, "Prenet/Postnet dimension")
 
 def create_attention_plot(attention_matrix):
     fig, ax = plt.subplots(nrows=1, ncols=1, sharex=True)

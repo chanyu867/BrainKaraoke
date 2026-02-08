@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainkaraoke"
+version = "0.1.0"
+description = "BrainKaraoke project"
+requires-python = ">=3.10"
+dependencies = [
+  # runtime deps (add your real runtime deps here if you want)
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "absl-py>=2.0",
+
+  # optional (reports/coverage)
+  "pytest-cov>=5.0",
+  "pytest-html>=4.0",
+]

@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 
 from absl import logging, flags, app
+import sh
 import time
 import os
 import torch 
+import torch.nn.functional as F
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 import tomllib
-
 from src import dataset
 from src.pipeline import Model
-
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,24 @@ flags.DEFINE_string(
     None,
     'Path to TOML config. Values override DEFAULT flags unless the flag is set on the command line.'
 )
+
 FLAGS = flags.FLAGS
+
+#define dummy flag values for testing
+def _define_if_missing(name, define_fn, default, help_str):
+    if name not in FLAGS:
+        define_fn(name, default, help_str)
+
+_define_if_missing("dropout", flags.DEFINE_float, 0.5, "Dropout rate")
+_define_if_missing("hidden_size", flags.DEFINE_integer, 333, "Hidden size")
+_define_if_missing("n_layers", flags.DEFINE_integer, 3, "Encoder layers")
+_define_if_missing("n_layers_decoder", flags.DEFINE_integer, 1, "Decoder layers")
+_define_if_missing("n_pos", flags.DEFINE_integer, 32, "Positional encoding length")
+_define_if_missing("use_MFCCs", flags.DEFINE_bool, True, "Use MFCCs (continuous) mode")
+_define_if_missing("use_bahdanau_attention", flags.DEFINE_bool, True, "Use Bahdanau attention")
+_define_if_missing("pre_and_postnet", flags.DEFINE_bool, True, "Enable pre/postnet")
+_define_if_missing("pre_and_postnet_dim", flags.DEFINE_integer, 256, "Pre/postnet dimension")
+
 
 def _apply_toml_config(config_path: str, FLAGS_obj):
     """Load TOML and apply into absl FLAGS.

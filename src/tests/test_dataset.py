@@ -22,6 +22,49 @@ from src.audio_processing import dynamic_range_decompression
 
 FLAGS = flags.FLAGS
 
+
+
+#define dummy flag values for testing
+def _define_if_missing(name, define_fn, default, help_str):
+    if name not in FLAGS:
+        define_fn(name, default, help_str)
+
+
+# Flags used by src/models.py
+_define_if_missing("dropout", flags.DEFINE_float, 0.5, "Dropout rate")
+_define_if_missing("hidden_size", flags.DEFINE_integer, 333, "Hidden size")
+_define_if_missing("n_layers", flags.DEFINE_integer, 3, "Encoder layers")
+_define_if_missing("n_layers_decoder", flags.DEFINE_integer, 1, "Decoder layers")
+_define_if_missing("n_pos", flags.DEFINE_integer, 32, "Positional encoding length")
+_define_if_missing("use_MFCCs", flags.DEFINE_bool, True, "Use MFCCs (continuous) mode")
+_define_if_missing("use_bahdanau_attention", flags.DEFINE_bool, True, "Use Bahdanau attention")
+_define_if_missing("pre_and_postnet", flags.DEFINE_bool, True, "Enable pre/postnet")
+_define_if_missing("pre_and_postnet_dim", flags.DEFINE_integer, 256, "Pre/postnet dimension")
+
+# Flags used by src/pipeline.py
+_define_if_missing("batch_size", flags.DEFINE_integer, 512, "Batch size")
+_define_if_missing("num_mel_centroids", flags.DEFINE_integer, 10, "Number of mel centroids")
+_define_if_missing("teacher_forcing_ratio", flags.DEFINE_float, 0.1, "Teacher forcing ratio")
+_define_if_missing("optim", flags.DEFINE_string, "Adam", "Optimizer name")
+_define_if_missing("learning_rate", flags.DEFINE_float, 0.0005, "Learning rate")
+_define_if_missing("lr_milestones", flags.DEFINE_list, [45], "LR scheduler milestones")
+
+# Flags used by src/dataset.py
+_define_if_missing("num_audio_classes", flags.DEFINE_integer, 256, "Number of audio classes")
+_define_if_missing("data_dir", flags.DEFINE_string, "", "Base data directory")
+_define_if_missing("audio_file", flags.DEFINE_string, "", "Audio filename")
+_define_if_missing("eeg_file", flags.DEFINE_string, "", "EEG filename")
+_define_if_missing("train_test_split", flags.DEFINE_float, 0.90, "Train/test split ratio")
+_define_if_missing("train_val_split", flags.DEFINE_float, 0.90, "Train/val split ratio")
+_define_if_missing("sampling_rate_eeg", flags.DEFINE_integer, 1024, "EEG sampling rate")
+_define_if_missing("window_size", flags.DEFINE_float, 400.0, "EEG window size (ms)")
+_define_if_missing("versatz_windows", flags.DEFINE_float, 1.0, "Versatz in windows")
+# These are accessed via getattr(FLAGS, "...", False) but defining is harmless and keeps config consistent
+_define_if_missing("OLS", flags.DEFINE_bool, False, "OLS mode")
+_define_if_missing("DenseModel", flags.DEFINE_bool, False, "DenseModel mode")
+
+
+
 def mu_law(x): #for audio conversion from regression to classification
     return np.sign(x)*np.log(1+255*np.abs(x))/np.log(1+255)
 
