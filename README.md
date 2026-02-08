@@ -39,6 +39,29 @@ Mel-spectrogram (Regression mode)
 > Even if some code labels this as “MFCC”, the actual transform is usually **mel spectrogram** (common in Tacotron/WaveGlow workflows).
 > During the training, checkpoints for each epoch will be saved in specified directory.
 
+## 📦 Data Download and Organization
+
+The data used in this project is publicly available on the **Open Science Framework (OSF)**:
+
+🔗 https://osf.io/7wf6n/
+
+### Dataset contents
+The dataset contains recordings from **three patients**.  
+For **each patient**, you need to download:
+
+- **sEEG data**: a `.npy` file used as input for preprocessing and model training  
+- **Audio data**: the corresponding audio waveform file aligned to the sEEG recording
+
+These files are required for running preprocessing, training, and inference.
+
+### How to download
+1. Go to the OSF project page: https://osf.io/7wf6n/
+2. Navigate to the data section for each patient
+3. Download:
+   - the `.npy` file containing the sEEG data
+   - the corresponding audio file for that patient
+4. Repeat this process for all **three patients**
+
 ## 🏃‍♀️How to Run
 
 ```bash
