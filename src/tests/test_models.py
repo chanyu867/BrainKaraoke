@@ -2,7 +2,8 @@
 import matplotlib
 matplotlib.use('Agg')
 
-from absl import logging,flags
+import logging
+from absl import flags
 import torch 
 import numpy as np
 import math
