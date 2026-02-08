@@ -65,7 +65,7 @@ chmod +x preprocess.sh show_details.sh train.sh waveglow.sh
 cd tests # please refer the README.md in the subfolder for more details
 ```
 
-## Output examples
+## 🗣️Output examples
 
 <img width="1298" height="396" alt="GT_vs_inferred_mel_spectrogram" src="https://github.com/user-attachments/assets/563ab609-4a08-450c-b501-05bc0553c7da" />
 
