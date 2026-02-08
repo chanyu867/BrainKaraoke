@@ -62,7 +62,7 @@ chmod +x preprocess.sh show_details.sh train.sh waveglow.sh
 ./test_performance.sh
 
 ## Optional: you can run pytest on our main programs, stored in "BrainKaraoke/test_perf"
-cd tests # please refer the README.md in the subfolder for more details
+cd src/tests # please refer the README.md in the subfolder for more details
 ```
 
 ## 🗣️Output examples
