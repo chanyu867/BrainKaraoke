@@ -11,7 +11,7 @@ The codebase is structured as:
 - A simple script to show the data details and visualize the results.
 - The code support two attention modes, Bahdanau attention and normal attention. First is set by default.
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
 
 ## 🎤Concept Overview
