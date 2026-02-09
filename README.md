@@ -45,6 +45,8 @@ The data used in this project is publicly available on the **Open Science Framew
 
 🔗 https://osf.io/7wf6n/
 
+Please note that the available audio file are anonymized; thus, current implementation will not reproduce the same results due to data quality.
+
 ### Dataset contents
 The dataset contains recordings from **three patients**.  
 For **each patient**, you need to download:
