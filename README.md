@@ -10,6 +10,9 @@ The codebase is structured as:
 - A simple script to run waveglow pipeline with pre-trained weights to convert inferred mel-spectrogram into audio format(mp3).
 - A simple script to show the data details and visualize the results.
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
+
 ## 🎤Concept Overview
 
 ### Inputs
