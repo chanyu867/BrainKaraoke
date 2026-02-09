@@ -13,17 +13,11 @@ dro=0.1
 pnpndim=256
 
 python3 -m src.eeg_main \
-    --SWA=False --swa_start $swas \
-    --dropout $dro --convolve_eeg_1d=False --convolve_eeg_2d=True --convolve_eeg_3d=False \
+    --swa_start $swas \
+    --dropout $dro \
     --use_bahdanau_attention=True \
-    --OLS=False --DenseModel=False \
-    --use_MFCCs=True --discretize_MFCCs=False \
+    --use_MFCCs=True \
     --hidden_size $hs --batch_size $bs \
     --pre_and_postnet=True --pre_and_postnet_dim $pnpndim\
     --epochs $epochs \
-    --learning_rate $lr --window_size $ws  \
-    --teacher_forcing_ratio $tfr --debug=False \
-    --mixed_loss=False \
-    --patient_eight=False \
-    --patient_thirteen=True \
-    --double_trouble=False \
+    --learning_rate $lr --window_size $ws
