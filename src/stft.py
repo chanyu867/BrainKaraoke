@@ -1,3 +1,5 @@
+# Portions Copyright (c) 2017, Prem Seetharaman (BSD 3-Clause).
+
 import torch
 import numpy as np
 import torch.nn.functional as F
