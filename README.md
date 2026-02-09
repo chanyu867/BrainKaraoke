@@ -2,13 +2,14 @@
 
 # Let brain talk! (sEEG → Audio)
 
-This project trains a **sequence-to-sequence (Seq2Seq) neural model** that learns a mapping from **EEG/sEEG time-series windows** to an **audio representation**. The goal is to predict audio content aligned to brain activity, using an encoder–decoder model with attention.
+This project trains a **sequence-to-sequence (Seq2Seq) neural model** that learns a mapping from **EEG/sEEG time-series windows** to an **audio representation**. The goal is to predict audio content aligned to brain activity, using an encoder–decoder model with attention. The codebase is based on the original study by Kohler et al., but has been substantially extended and refactored. In addition to improving the released implementation, we added missing components needed to run the full end-to-end pipeline, starting from preprocessing to mel-transformation to audio format.
 
 The codebase is structured as:
-- A preprocessing script for both sEEG data and audio data. EEG preprocessing is not supported.
-- A model training script for RNN model, which infer mel-spectrogram from SEEG data.
+- A full preprocessing script for both sEEG data and audio data.
+- A model training script for RNN model, which infer mel-spectrogram from sEEG data.
 - A simple script to run waveglow pipeline with pre-trained weights to convert inferred mel-spectrogram into audio format(mp3).
 - A simple script to show the data details and visualize the results.
+- The code support two attention modes, Bahdanau attention and normal attention. First is set by default.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
