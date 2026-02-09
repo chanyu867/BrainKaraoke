@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Portions Copyright (c) 2017, Prem Seetharaman (BSD 3-Clause).
+# Modifications Copyright (c) 2026, Yu Irie, Javeth Calvo Molina, Jakob Wilhelm Furth
+
 from absl import logging, flags, app
 import time
 import os

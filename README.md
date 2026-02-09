@@ -96,6 +96,8 @@ cd src/tests # please refer the README.md in the subfolder for more details
 
 ## 📕Reference
 > Articles:
+> This project includes and is derived from code by Prem Seetharaman (2017), licensed under the BSD 3-Clause License. Significant modifications have been made.
+> 
 > - Kohler et. al., 2022, NBDT, "Synthesizing Speech from Intracranial Depth Electrodes using an Encoder-Decoder Framework"
 > - Prenger et. al., 2018, "WAVEGLOW: A FLOW-BASED GENERATIVE NETWORK FOR SPEECH SYNTHESIS
 >
